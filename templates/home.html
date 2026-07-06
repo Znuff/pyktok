@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pyktok</title>
+  <link rel="stylesheet" href="https://use.typekit.net/uun7ukc.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+</head>
+<body class="home-body">
+  <div class="home-container">
+    <img src="/static/logo.svg" alt="PyTok" class="home-logo">
+    <div class="home-input-row">
+      <input
+        id="url-input"
+        type="text"
+        placeholder="Paste a TikTok link..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button id="go-btn">Go</button>
+    </div>
+  </div>
+
+  {% if recent_videos %}
+  <section class="home-carousel" aria-label="Recent videos">
+    <h2 class="home-carousel-title">Recent</h2>
+    <div class="home-carousel-track">
+      {% for v in recent_videos %}
+      <a class="home-carousel-card" href="/@{{ v.uploader }}/video/{{ v.video_id }}">
+        <img src="{{ v.thumbnail_url }}" alt="" loading="lazy">
+        <div class="home-carousel-meta">
+          <span class="home-carousel-author">@{{ v.uploader }}</span>
+          <span class="home-carousel-desc">{{ v.description }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <script>
+    function submit() {
+      const raw = document.getElementById('url-input').value.trim();
+      if (!raw) return;
+
+      // Direct match — tiktok.com/@user/video/id or our own domain /@user/video/id
+      const direct = raw.match(/(?:tiktok\.com)?\/(@[^/]+\/video\/\d+)/);
+      if (direct) {
+        window.location.href = '/' + direct[1];
+        return;
+      }
+
+      // Also match bare /@user/video/id (already on our domain)
+      const bare = raw.match(/^\/?(@[^/]+\/video\/\d+)$/);
+      if (bare) {
+        window.location.href = '/' + bare[1];
+        return;
+      }
+
+      // Server-side resolve (short URLs, etc.)
+      const form = new FormData();
+      form.append('url', raw);
+      fetch('/resolve', { method: 'POST', body: form, redirect: 'follow' })
+        .then(async resp => {
+          if (resp.ok || resp.redirected) {
+            window.location.href = resp.url;
+            return;
+          }
+          let msg = 'Could not resolve that TikTok URL.';
+          try {
+            const body = await resp.json();
+            if (body && body.detail) msg = body.detail;
+          } catch (_) {}
+          alert(msg);
+        })
+        .catch(() => alert('Network error — could not resolve URL.'));
+    }
+
+    document.getElementById('go-btn').addEventListener('click', submit);
+    document.getElementById('url-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') submit();
+    });
+  </script>
+</body>
+</html>

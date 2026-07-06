@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if ready %}@{{ author }}{% else %}Loading...{% endif %} — pyktok</title>
+  <link rel="stylesheet" href="https://use.typekit.net/uun7ukc.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+</head>
+<body>
+
+  <!-- Always-present top progress bar (hidden in ready state via CSS) -->
+  <div id="progress-bar"></div>
+
+  {% if not ready %}
+  <!-- ------------------------------------------------------------------ -->
+  <!-- LOADING STATE                                                        -->
+  <!-- ------------------------------------------------------------------ -->
+  <div id="loading-state" class="loading-state">
+    <p class="loading-text">Processing your video, please be patient</p>
+  </div>
+
+  <div id="error-state" class="error-state hidden">
+    <p class="loading-text">Something went wrong.</p>
+    <a href="{{ tiktok_url }}" target="_blank" rel="noopener" class="open-tiktok-link">Open on TikTok</a>
+  </div>
+
+  <script>
+    (function() {
+      const videoId = {{ video_id | tojson }};
+      const tiktokUrl = {{ tiktok_url | tojson }};
+
+      function showError() {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('progress-bar').style.background = '#888';
+      }
+
+      const bar = document.getElementById('progress-bar');
+      const es = new EventSource('/api/progress/' + videoId);
+
+      // Start in shimmer mode until yt-dlp reports real progress
+      bar.classList.add('indeterminate');
+
+      es.onmessage = function(e) {
+        const d = JSON.parse(e.data);
+        if (d.percent != null && d.percent > 0) {
+          bar.classList.remove('indeterminate');
+          bar.style.width = d.percent + '%';
+        }
+        if (d.status === 'ready') {
+          es.close();
+          bar.classList.remove('indeterminate');
+          bar.style.width = '100%';
+          setTimeout(function() { window.location.reload(); }, 200);
+        } else if (d.status === 'error' || d.status === 'not_found') {
+          es.close();
+          bar.classList.remove('indeterminate');
+          showError();
+        }
+      };
+
+      es.onerror = function() {
+        es.close();
+        showError();
+      };
+    })();
+  </script>
+
+  {% else %}
+  <!-- ------------------------------------------------------------------ -->
+  <!-- PLAYER STATE                                                         -->
+  <!-- ------------------------------------------------------------------ -->
+  <div class="player-page">
+    <div class="video-wrapper">
+      <video
+        id="main-video"
+        src="{{ video_url }}"
+        poster="{{ thumbnail_url }}"
+        width="{{ width }}"
+        height="{{ height }}"
+        loop
+        playsinline
+      ></video>
+
+      <!-- Play button overlay (shown when autoplay is blocked) -->
+      <button id="play-btn" class="play-btn hidden" aria-label="Play">
+        <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <!-- Overlay: top-left author + description, top-right options -->
+      <div class="overlay">
+        <div class="overlay-top">
+
+          <!-- Author pill + description below -->
+          <div class="author-section">
+            <span id="author-handle" class="author-handle">@{{ author }}</span>
+            <div id="desc-badge" class="desc-badge">{{ description }}</div>
+          </div>
+
+          <!-- Options popup -->
+          <div class="options-wrapper">
+            <button id="options-btn" class="options-btn" aria-label="Options">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            </button>
+            <div id="options-panel" class="options-panel">
+              <a href="{{ video_url }}" download class="options-item">Download</a>
+              <button id="btn-share" class="options-item">Share</button>
+              <a href="{{ tiktok_url }}" target="_blank" rel="noopener" class="options-item">Open on TikTok</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+  <script src="/static/player.js"></script>
+  {% endif %}
+
+</body>
+</html>

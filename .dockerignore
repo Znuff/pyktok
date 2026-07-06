@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environment (not needed in Docker — deps installed globally)
+.venv/
+
+# Downloaded video data (mounted as a volume at runtime)
+data/
+
+# Dev/docs
+*.md
+*.log
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!--
+    Favicon / small-size variant of the PyTok logo.
+    Designed to hold at 16 × 16 – 48 × 48 px:
+      • No chromatic aberration (too subtle to survive scaling)
+      • No text (illegible below ~32 px)
+      • Thick, high-contrast shapes only
+      • TikTok colours used as solid fills instead of offset ghosts
+  -->
+
+  <!-- Background -->
+  <rect width="100" height="100" rx="22" fill="#010101"/>
+
+  <!-- ── Note head 1 (left) — Python blue ── -->
+  <circle cx="32" cy="74" r="17" fill="#3776AB"/>
+  <!-- tiny yellow pip — Python's second colour, stays visible even at 16px -->
+  <circle cx="28" cy="70" r="5" fill="#FFD43B"/>
+
+  <!-- ── Stem ── -->
+  <rect x="47" y="14" width="7" height="62" rx="3.5" fill="white"/>
+
+  <!-- ── Flag curve ── -->
+  <path d="M 50.5 17 Q 82 5 85 38 Q 86 55 74 62"
+        stroke="white" stroke-width="8" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ── Note head 2 (right) — TikTok red ── -->
+  <circle cx="70" cy="61" r="14" fill="#fe2c55"/>
+</svg>

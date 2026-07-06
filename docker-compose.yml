@@ -1,0 +1,26 @@
+services:
+  pyktok:
+    hostname: pyktok
+    container_name: pyktok
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Persist downloaded videos/thumbnails/metadata on the host.
+      # The app uses relative path `data/{id}/...` from WORKDIR /app,
+      # so this maps to /app/data inside the container.
+      - ./data:/app/data
+    environment:
+      # Delete videos older than this many days (0 = keep forever)
+      - VIDEO_RETENTION_DAYS=0
+      # Trigger cleanup when free disk space falls below this threshold in GB (0 = disabled)
+      - CLEANUP_DISK_THRESHOLD_GB=0
+      # Number of recent videos to show in homepage mini-carousel (0 = disabled)
+      - HOME_CAROUSEL_COUNT=10
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

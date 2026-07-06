@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <!--
+    Logo — large-size variant, same visual language as the favicon.
+    Scale factor: 3.2× (320 / 100)
+      • No chromatic aberration
+      • No text
+      • Left note head: Python blue + yellow pip
+      • Right note head: TikTok red
+  -->
+
+  <!-- Background -->
+  <rect width="320" height="320" rx="70" fill="#010101"/>
+
+  <!-- ── Note head (left) — Python blue ── -->
+  <circle cx="102" cy="237" r="54" fill="#3776AB"/>
+  <!-- yellow pip -->
+  <circle cx="90" cy="224" r="16" fill="#FFD43B"/>
+
+  <!-- ── Stem ── -->
+  <rect x="150" y="45" width="22" height="198" rx="11" fill="white"/>
+
+  <!-- ── Flag curve ── -->
+  <path d="M 162 54 Q 262 16 272 122 Q 276 176 237 198"
+        stroke="white" stroke-width="26" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ── Note head (right) — TikTok red ── -->
+  <circle cx="224" cy="195" r="45" fill="#fe2c55"/>
+</svg>

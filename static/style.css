@@ -1,0 +1,540 @@
+/* ===== Reset ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== Base ===== */
+html, body {
+  height: 100%;
+  background: #0c0c15;
+  color: #fff;
+  font-family: 'seasons', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Top progress bar ===== */
+#progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: #fe2c55;
+  transition: width 0.4s ease;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* Indeterminate shimmer — active while percent is still 0 */
+#progress-bar.indeterminate {
+  width: 100%;
+  background: rgba(254, 44, 85, 0.18);
+}
+
+#progress-bar.indeterminate::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  background: #fe2c55;
+  animation: bar-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes bar-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(390%); }
+}
+
+/* ===== Utility ===== */
+.hidden {
+  display: none !important;
+}
+
+/* ===== Homepage ===== */
+.home-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 2rem 0;
+  gap: 2rem;
+}
+
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 600px;
+  padding: 2rem;
+}
+
+.home-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 0.5rem;
+  opacity: 0;
+  transform: translateY(-8px);
+  animation: logo-in 0.5s ease forwards;
+}
+
+@keyframes logo-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-input-row {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.home-input-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.2rem;
+  padding: 0.6rem 0.2rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.home-input-row input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.home-input-row input:focus {
+  border-bottom-color: rgba(255, 255, 255, 0.8);
+}
+
+.home-input-row button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.home-input-row button:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== Loading state ===== */
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 1.5rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-text {
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.01em;
+}
+
+.open-tiktok-link {
+  color: #fe2c55;
+  font-size: 1rem;
+  text-decoration: none;
+  border-bottom: 1px solid #fe2c55;
+  padding-bottom: 2px;
+  transition: opacity 0.2s;
+}
+
+.open-tiktok-link:hover {
+  opacity: 0.75;
+}
+
+/* ===== Player page ===== */
+.player-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background: #0c0c15;
+}
+
+/* ===== Video wrapper ===== */
+.video-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 100dvh;
+}
+
+.video-wrapper video {
+  max-height: 100dvh;
+  max-width: 100vw;
+  object-fit: contain;
+  display: block;
+}
+
+/* ===== Play button overlay ===== */
+.play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.play-btn:hover {
+  background: rgba(0, 0, 0, 0.65);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.play-btn svg {
+  width: 36px;
+  height: 36px;
+  margin-left: 4px; /* optical centre for play triangle */
+}
+
+/* ===== Overlay (top bar with author + options button) ===== */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.overlay > * {
+  pointer-events: all;
+}
+
+.overlay-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.75rem 0.9rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+}
+
+/* ===== Frosted glass pill (shared) ===== */
+.author-handle,
+.options-btn,
+.desc-badge {
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(6px);
+  border-radius: 999px;
+  color: #fff;
+}
+
+/* ===== Author section (pill + description below) ===== */
+.author-section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 44px);
+}
+
+.author-handle {
+  display: inline-block;
+  font-size: 0.85rem;
+  padding: 5px 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.author-handle:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* ===== Description badge (below username) ===== */
+.desc-badge {
+  background: rgba(0, 0, 0, 0.55);
+  padding: 5px 13px;
+  font-size: 0.82rem;
+  max-width: 100%;
+  width: max-content;
+  white-space: normal;
+  overflow-wrap: break-word;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* ===== Options wrapper + popup ===== */
+.options-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.options-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.options-btn:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.options-btn svg {
+  flex-shrink: 0;
+}
+
+.author-handle {
+  display: inline-block;
+  font-family: 'seasons', sans-serif;
+  font-size: 0.85rem;
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(6px);
+  padding: 5px 13px;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+
+.author-handle:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* ===== Description badge (below username) ===== */
+.desc-badge {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-family: 'seasons', sans-serif;
+  font-size: 0.82rem;
+  max-width: 100%;
+  width: max-content;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.desc-badge.visible {
+  opacity: 1;
+}
+
+/* ===== Options wrapper + popup ===== */
+.options-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.options-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(6px);
+  border: none;
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.options-btn:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.options-btn svg {
+  flex-shrink: 0;
+}
+
+/* ===== Options popup ===== */
+.options-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(18, 18, 18, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  padding: 5px 0;
+  min-width: 170px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: top right;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.options-panel.open {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0) scale(1);
+}
+
+.options-item {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 1.1rem;
+  color: #fff;
+  font-size: 0.9rem;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.options-item + .options-item {
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.options-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== Home carousel (recent videos) ===== */
+.home-carousel {
+  width: 100%;
+  max-width: 900px;
+  padding: 0 1rem;
+}
+
+.home-carousel-title {
+  font-family: 'seasons', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  padding-left: 0.25rem;
+}
+
+.home-carousel-track {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0.25rem 0.25rem 0.75rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.home-carousel-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.home-carousel-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.home-carousel-track::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+@media (min-width: 640px) {
+  .home-carousel-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+}
+
+.home-carousel-card {
+  flex: 0 0 140px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #fff;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.home-carousel-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.home-carousel-card img {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.home-carousel-meta {
+  padding: 0.5rem 0.6rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-carousel-author {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-carousel-desc {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
