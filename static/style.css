@@ -73,6 +73,7 @@ html, body {
   width: 100%;
   max-width: 600px;
   padding: 2rem;
+  position: relative;
 }
 
 .home-logo {
@@ -132,6 +133,21 @@ html, body {
   border-color: #fff;
   background: rgba(255, 255, 255, 0.08);
 }
+
+.home-error {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.6rem;
+  color: #fe2c55;
+  font-size: 0.95rem;
+  text-align: center;
+  max-width: 520px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.home-error.hidden { display: none; }
 
 /* ===== Loading state ===== */
 .loading-state,

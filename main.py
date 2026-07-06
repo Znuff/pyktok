@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import time
+import urllib.parse
 from pathlib import Path
 
 import httpx
@@ -307,16 +308,22 @@ async def home(request: Request):
 
 
 @app.post('/resolve')
-async def resolve_url(request: Request, url: str = Form(...)):
-    if request.headers.get('content-length'):
-        try:
-            if int(request.headers['content-length']) > MAX_FORM_BYTES:
-                raise HTTPException(status_code=413, detail='Request body too large.')
-        except ValueError:
-            raise HTTPException(status_code=400, detail='Invalid Content-Length.')
+async def resolve_url(request: Request):
+    # Read raw body once, then re-parse form from it. Reading request.body()
+    # after FastAPI's Form(...) dependency has already touched the stream
+    # raises RuntimeError("Stream consumed"), so we do body+parse ourselves
+    # and skip the Form() dependency entirely.
     body = await request.body()
     if len(body) > MAX_FORM_BYTES:
         raise HTTPException(status_code=413, detail='Request body too large.')
+    try:
+        form = urllib.parse.parse_qs(body.decode('utf-8'), strict_parsing=True)
+    except (UnicodeDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail='Invalid form body.')
+    values = form.get('url')
+    if not values or not values[0].strip():
+        raise HTTPException(status_code=400, detail='Please paste a TikTok URL.')
+    url = values[0]
     # Validate scheme + allowlist host BEFORE any outbound request.
     try:
         parsed = httpx.URL(url)
@@ -345,7 +352,7 @@ async def resolve_url(request: Request, url: str = Form(...)):
     if photo_match:
         raise HTTPException(
             status_code=400,
-            detail='This is a TikTok photo post — pyktok only supports video posts.',
+            detail="pyktok doesn't support TikTok photo posts — only videos.",
         )
 
     match = re.search(r'/@([^/]+)/video/(\d+)', canonical)
@@ -358,9 +365,19 @@ async def resolve_url(request: Request, url: str = Form(...)):
     loop = asyncio.get_event_loop()
     try:
         info = await loop.run_in_executor(None, _extract_meta_only, url)
-        if info.get('_type') == 'playlist' and not info.get('entries'):
+        # Reject photo posts (TikTok slideshows). yt-dlp returns them as a
+        # playlist of image entries — no playable video, would 500/garbage
+        # downstream.
+        if info.get('_type') == 'playlist' or info.get('entries') or info.get('vcodec') == 'none':
+            raise HTTPException(
+                status_code=400,
+                detail="pyktok doesn't support TikTok photo posts — only videos.",
+            )
+        uploader = info.get('uploader') or info.get('creator') or info.get('channel')
+        vid_id = info.get('id')
+        if not uploader or not vid_id:
             raise HTTPException(status_code=400, detail='No video found at that URL.')
-        return RedirectResponse(f'/@{info["uploader"]}/video/{info["id"]}', status_code=303)
+        return RedirectResponse(f'/@{uploader}/video/{vid_id}', status_code=303)
     except HTTPException:
         raise
     except Exception as e:
@@ -403,6 +420,17 @@ async def serve_thumbnail(video_id: str):
 
 @app.get('/{path:path}')
 async def catch_all(path: str, request: Request):
+    # Reject photo posts up front — yt-dlp will fail anyway, and we want a
+    # clear error message instead of a generic download failure.
+    if re.match(r'^@[^/]+/photo/\d+$', path):
+        return templates.TemplateResponse(request, 'player.html', {
+            'ready': False,
+            'video_id': '0',
+            'username': path.split('/')[0].lstrip('@'),
+            'tiktok_url': f'https://www.tiktok.com/{path}',
+            'error_message': "pyktok doesn't support TikTok photo posts — only videos.",
+        })
+
     match = re.match(r'^@([^/]+)/video/(\d+)$', path)
     if not match:
         raise HTTPException(status_code=404)

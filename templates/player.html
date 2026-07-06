@@ -17,15 +17,16 @@
   <!-- ------------------------------------------------------------------ -->
   <!-- LOADING STATE                                                        -->
   <!-- ------------------------------------------------------------------ -->
-  <div id="loading-state" class="loading-state">
+  <div id="loading-state" class="loading-state{% if error_message %} hidden{% endif %}">
     <p class="loading-text">Processing your video, please be patient</p>
   </div>
 
-  <div id="error-state" class="error-state hidden">
-    <p class="loading-text">Something went wrong.</p>
+  <div id="error-state" class="error-state{% if not error_message %} hidden{% endif %}">
+    <p class="loading-text">{{ error_message or "Something went wrong." }}</p>
     <a href="{{ tiktok_url }}" target="_blank" rel="noopener" class="open-tiktok-link">Open on TikTok</a>
   </div>
 
+  {% if not error_message %}
   <script>
     (function() {
       const videoId = {{ video_id | tojson }};
@@ -34,6 +35,7 @@
       function showError() {
         document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('error-state').querySelector('.loading-text').textContent = "Something went wrong.";
         document.getElementById('progress-bar').style.background = '#888';
       }
 
@@ -67,6 +69,7 @@
       };
     })();
   </script>
+  {% endif %}
 
   {% else %}
   <!-- ------------------------------------------------------------------ -->

@@ -21,6 +21,7 @@
       >
       <button id="go-btn">Go</button>
     </div>
+    <p id="home-error" class="home-error hidden" role="alert"></p>
   </div>
 
   {% if recent_videos %}
@@ -41,7 +42,17 @@
   {% endif %}
 
   <script>
+    function showError(msg) {
+      const el = document.getElementById('home-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function clearError() {
+      document.getElementById('home-error').classList.add('hidden');
+    }
+
     function submit() {
+      clearError();
       const raw = document.getElementById('url-input').value.trim();
       if (!raw) return;
 
@@ -60,9 +71,13 @@
       }
 
       // Server-side resolve (short URLs, etc.)
-      const form = new FormData();
-      form.append('url', raw);
-      fetch('/resolve', { method: 'POST', body: form, redirect: 'follow' })
+      const body = new URLSearchParams({ url: raw });
+      fetch('/resolve', {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        redirect: 'follow',
+      })
         .then(async resp => {
           if (resp.ok || resp.redirected) {
             window.location.href = resp.url;
@@ -71,17 +86,18 @@
           let msg = 'Could not resolve that TikTok URL.';
           try {
             const body = await resp.json();
-            if (body && body.detail) msg = body.detail;
+            if (body && typeof body.detail === 'string') msg = body.detail;
           } catch (_) {}
-          alert(msg);
+          showError(msg);
         })
-        .catch(() => alert('Network error — could not resolve URL.'));
+        .catch(() => showError('Network error — could not resolve URL.'));
     }
 
     document.getElementById('go-btn').addEventListener('click', submit);
     document.getElementById('url-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') submit();
     });
+    document.getElementById('url-input').addEventListener('input', clearError);
   </script>
 </body>
 </html>
