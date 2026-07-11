@@ -90,6 +90,13 @@ yt-dlp updates. Both are acceptable for a self-hosted viewing tool.
 `data/` is a flat directory of one folder per video ID. Cleanup walks
 it, sorts by `downloaded_at`, and removes the oldest first.
 
+### Browser-extension redirects
+
+Browser extensions can redirect a TikTok link such as
+`https://vt.tiktok.com/ZSQEXFANv/` to
+`http://localhost:8000/resolve/ZSQEXFANv`. This endpoint resolves the link and redirects
+to the video page.
+
 ## Development
 
 Local venv, then install the deps and run uvicorn:
