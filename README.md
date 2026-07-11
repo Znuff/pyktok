@@ -94,7 +94,7 @@ it, sorts by `downloaded_at`, and removes the oldest first.
 
 Browser extensions can redirect a TikTok link such as
 `https://vt.tiktok.com/ZSQEXFANv/` to
-`http://localhost:8000/resolve/ZSQEXFANv`. This endpoint resolves the link and redirects
+`http://localhost:8000/ZSQEXFANv`. This endpoint resolves the link and redirects
 to the video page.
 
 ## Development
