@@ -389,7 +389,7 @@ async def resolve_url(request: Request):
     return await _resolve_tiktok_url(values[0])
 
 
-@app.get('/{short_code}')
+@app.get('/resolve/{short_code}')
 async def resolve_short_url(short_code: str):
     """Resolve TikTok's /Z.../ short-link paths on this host."""
     if not re.fullmatch(r'Z[A-Za-z0-9]+', short_code):
