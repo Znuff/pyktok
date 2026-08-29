@@ -307,23 +307,8 @@ async def home(request: Request):
     return templates.TemplateResponse(request, 'home.html', {'recent_videos': recent_videos})
 
 
-@app.post('/resolve')
-async def resolve_url(request: Request):
-    # Read raw body once, then re-parse form from it. Reading request.body()
-    # after FastAPI's Form(...) dependency has already touched the stream
-    # raises RuntimeError("Stream consumed"), so we do body+parse ourselves
-    # and skip the Form() dependency entirely.
-    body = await request.body()
-    if len(body) > MAX_FORM_BYTES:
-        raise HTTPException(status_code=413, detail='Request body too large.')
-    try:
-        form = urllib.parse.parse_qs(body.decode('utf-8'), strict_parsing=True)
-    except (UnicodeDecodeError, ValueError):
-        raise HTTPException(status_code=400, detail='Invalid form body.')
-    values = form.get('url')
-    if not values or not values[0].strip():
-        raise HTTPException(status_code=400, detail='Please paste a TikTok URL.')
-    url = values[0]
+async def _resolve_tiktok_url(url: str) -> RedirectResponse:
+    """Resolve an allowed TikTok URL to its local canonical video page."""
     # Validate scheme + allowlist host BEFORE any outbound request.
     try:
         parsed = httpx.URL(url)
@@ -383,6 +368,41 @@ async def resolve_url(request: Request):
     except Exception as e:
         log.warning("resolve failed for %s: %s", url, e)
         raise HTTPException(status_code=400, detail='Could not resolve that TikTok URL. Make sure it points to a video (photo posts and other non-video links are not supported).')
+
+
+@app.post('/resolve')
+async def resolve_url(request: Request):
+    # Read raw body once, then re-parse form from it. Reading request.body()
+    # after FastAPI's Form(...) dependency has already touched the stream
+    # raises RuntimeError("Stream consumed"), so we do body+parse ourselves
+    # and skip the Form() dependency entirely.
+    body = await request.body()
+    if len(body) > MAX_FORM_BYTES:
+        raise HTTPException(status_code=413, detail='Request body too large.')
+    try:
+        form = urllib.parse.parse_qs(body.decode('utf-8'), strict_parsing=True)
+    except (UnicodeDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail='Invalid form body.')
+    values = form.get('url')
+    if not values or not values[0].strip():
+        raise HTTPException(status_code=400, detail='Please paste a TikTok URL.')
+    return await _resolve_tiktok_url(values[0])
+
+
+_SHORT_LINK_HOSTS = ('vm.tiktok.com', 'vt.tiktok.com')
+
+
+@app.get('/{short_code}')
+async def resolve_short_url(short_code: str):
+    """Resolve TikTok's /Z.../ short-link paths on this host."""
+    if not re.fullmatch(r'Z[A-Za-z0-9]+', short_code):
+        raise HTTPException(status_code=404)
+    for host in _SHORT_LINK_HOSTS:
+        try:
+            return await _resolve_tiktok_url(f'https://{host}/{short_code}/')
+        except HTTPException:
+            if host == _SHORT_LINK_HOSTS[-1]:
+                raise
 
 
 @app.get('/api/progress/{video_id}')
