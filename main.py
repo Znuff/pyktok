@@ -246,6 +246,44 @@ def _sync_download(video_id: str, url: str) -> dict:
     return clean
 
 
+_AGE_RESTRICTED_MARKERS = (
+    'comfortable for some audiences',
+    'log in for access',
+    'sign in to confirm your age',
+    'age-restricted',
+    'age restricted',
+    'this video may be inappropriate for some users',
+    'login required',
+)
+
+_GEO_BLOCKED_MARKERS = (
+    'not available in your country',
+    'not available in your region',
+    'geo-restricted',
+    'geo restricted',
+    'video is not available in your location',
+)
+
+_UNAVAILABLE_MARKERS = (
+    'video unavailable',
+    'this video is unavailable',
+    'video has been removed',
+    'status code 404',
+)
+
+
+def _friendly_download_error(e: Exception) -> str:
+    """Map a yt-dlp exception to an actionable, user-facing message."""
+    msg = str(e).lower()
+    if any(m in msg for m in _AGE_RESTRICTED_MARKERS):
+        return "This video is age-restricted on TikTok."
+    if any(m in msg for m in _GEO_BLOCKED_MARKERS):
+        return "This video isn't available in the region this server is in."
+    if any(m in msg for m in _UNAVAILABLE_MARKERS):
+        return "This video is unavailable — it may have been deleted or made private."
+    return "Something went wrong while downloading this video."
+
+
 def _extract_meta_only(url: str) -> dict:
     """Blocking — extract metadata without downloading. Used in /resolve fallback."""
     with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
@@ -287,7 +325,11 @@ async def download_video_async(video_id: str, url: str):
             }
         except Exception as e:
             log.error("download error  [%s]  %s", video_id, e)
-            download_states[video_id] = {'status': 'error', 'percent': 0, 'error': str(e)}
+            download_states[video_id] = {
+                'status': 'error',
+                'percent': 0,
+                'error': _friendly_download_error(e),
+            }
         # Evict terminal-state entry after grace window. Long enough for any
         # SSE client to see the final status, short enough to bound memory.
         loop.call_later(300, download_states.pop, video_id, None)

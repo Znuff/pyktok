@@ -32,10 +32,10 @@
       const videoId = {{ video_id | tojson }};
       const tiktokUrl = {{ tiktok_url | tojson }};
 
-      function showError() {
+      function showError(msg) {
         document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('error-state').classList.remove('hidden');
-        document.getElementById('error-state').querySelector('.loading-text').textContent = "Something went wrong.";
+        document.getElementById('error-state').querySelector('.loading-text').textContent = msg || "Something went wrong.";
         document.getElementById('progress-bar').style.background = '#888';
       }
 
@@ -56,7 +56,11 @@
           bar.classList.remove('indeterminate');
           bar.style.width = '100%';
           setTimeout(function() { window.location.reload(); }, 200);
-        } else if (d.status === 'error' || d.status === 'not_found') {
+        } else if (d.status === 'error') {
+          es.close();
+          bar.classList.remove('indeterminate');
+          showError(d.error);
+        } else if (d.status === 'not_found') {
           es.close();
           bar.classList.remove('indeterminate');
           showError();
