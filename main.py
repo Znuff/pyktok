@@ -382,6 +382,12 @@ async def _resolve_tiktok_url(url: str) -> RedirectResponse:
             detail="pyktok doesn't support TikTok photo posts — only videos.",
         )
 
+    if re.search(r'/@([^/]+)/live', canonical):
+        raise HTTPException(
+            status_code=400,
+            detail="pyktok doesn't support TikTok Live streams yet.",
+        )
+
     match = re.search(r'/@([^/]+)/video/(\d+)', canonical)
     if match:
         user, vid_id = match.groups()
@@ -491,6 +497,17 @@ async def catch_all(path: str, request: Request):
             'username': path.split('/')[0].lstrip('@'),
             'tiktok_url': f'https://www.tiktok.com/{path}',
             'error_message': "pyktok doesn't support TikTok photo posts — only videos.",
+        })
+
+    # Live streams aren't downloadable — show a clear message rather than a 404.
+    live_match = re.match(r'^@([^/]+)/live$', path)
+    if live_match:
+        return templates.TemplateResponse(request, 'player.html', {
+            'ready': False,
+            'video_id': '0',
+            'username': live_match.group(1),
+            'tiktok_url': f'https://www.tiktok.com/{path}',
+            'error_message': "pyktok doesn't support TikTok Live streams yet.",
         })
 
     match = re.match(r'^@([^/]+)/video/(\d+)$', path)
