@@ -24,6 +24,10 @@
     <p id="home-error" class="home-error hidden" role="alert"></p>
   </div>
 
+  {% if explore_enabled %}
+  <a href="/explore" class="home-explore-link">Explore trending</a>
+  {% endif %}
+
   {% if recent_videos %}
   <section class="home-carousel" aria-label="Recent videos">
     <h2 class="home-carousel-title">Recent</h2>

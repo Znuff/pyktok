@@ -55,6 +55,11 @@ requests to the app. Copy it, edit the server name and the TLS paths,
 | `CLEANUP_DISK_THRESHOLD_GB`| `0`     | When free disk falls below N GB, run age + LRU cleanup. `0` disables it.     |
 | `HOME_CAROUSEL_COUNT`      | `10`    | Recent-videos carousel on the homepage. `0` hides it.                       |
 | `MAX_CONCURRENT_DOWNLOADS` | `2`     | yt-dlp runs in a thread pool; this caps how many go at once.                 |
+| `EXPLORE_ENABLED`          | `0`     | Turn on the experimental `/explore` feed. Off by default.                    |
+| `EXPLORE_REGION`           | `""`    | Region sent to the explore API. Empty = infer from server IP.                |
+| `EXPLORE_CATEGORY`         | `120`   | Default category tab (`120` = All).                                          |
+| `EXPLORE_PAGE_SIZE`        | `8`     | Items per explore batch.                                                     |
+| `EXPLORE_CACHE_TTL`        | `60`    | Seconds to cache an explore batch. `0` disables caching.                     |
 
 ## Why yt-dlp
 
@@ -119,14 +124,36 @@ The entrypoint of the Docker image runs `pip install --upgrade yt-dlp`
 on every start, which keeps the extractor working when TikTok changes
 their site. Do the same in your venv when yt-dlp starts failing.
 
+## Explore feed (experimental)
+
+Set `EXPLORE_ENABLED=1` to turn on `/explore`, a category-filtered grid of
+what's trending on TikTok. Clicking a card uses the normal download/player
+path, so anything you watch lands in `data/` and is subject to cleanup like
+any other video.
+
+This is the one place pyktok talks to TikTok outside of `yt-dlp`. It calls
+TikTok's private web endpoint `GET /api/explore/item_list/`, which:
+
+- needs a `ttwid` cookie that is only issued after loading
+  `https://www.tiktok.com/explore` once (the app primes and refreshes this
+  automatically), and
+- does **not** paginate. The `cursor` it returns is always `"0"` and
+  `hasMore` is always true — each request yields a fresh, rotating batch.
+  The UI therefore offers a "Load more" button and de-duplicates by id.
+
+Because it's reverse-engineered, it can break when TikTok changes the
+endpoint. It's feature-flagged off for that reason, and errors are surfaced
+as a friendly message rather than a crash. Cover images are proxied through
+the app (`/api/explore/thumb`) with a host allowlist, since TikTok's CDN URLs
+are signed and expire.
+
 ## Notes
 
 Currently it only handles VIDEOS. Photos, slideshows, and other
 TikTok post types are not supported.
 
-Feeds are not supported and not planned. That means the homepage
-(`/foryou`, `/following`), user profile pages, hashtag pages, and any
-other listing endpoint. The app only resolves a single video URL to a
-single video. If you want to browse TikTok, use the website or the
-app; pyktok is for watching a specific link someone sent you without
-opening either.
+Beyond the experimental explore feed, other feeds are not supported and not
+planned: the homepage (`/foryou`, `/following`), user profile pages, hashtag
+pages, and other listing endpoints. The core of the app resolves a single
+video URL to a single video. If you want to browse the rest of TikTok, use
+the website or the app.

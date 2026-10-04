@@ -149,6 +149,21 @@ html, body {
 }
 .home-error.hidden { display: none; }
 
+.home-explore-link {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  text-decoration: none;
+  padding: 0.45rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.home-explore-link:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* ===== Loading state ===== */
 .loading-state,
 .error-state {
@@ -553,4 +568,184 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ===== Explore page ===== */
+.explore-body {
+  min-height: 100dvh;
+  padding-bottom: 3rem;
+}
+
+.explore-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: rgba(12, 12, 21, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.explore-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.15s;
+}
+
+.explore-back:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.explore-title {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.explore-filters {
+  position: sticky;
+  top: 52px;
+  z-index: 40;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.7rem 1rem;
+  background: rgba(12, 12, 21, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  scrollbar-width: none;
+}
+
+.explore-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.explore-filter {
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.explore-filter:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.explore-filter.active {
+  background: #fe2c55;
+  border-color: #fe2c55;
+  color: #fff;
+}
+
+.explore-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 0;
+}
+
+.explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.9rem;
+}
+
+.explore-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #fff;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.explore-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.explore-card img {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.explore-card-meta {
+  padding: 0.5rem 0.6rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.explore-card-author {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.explore-card-desc {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.explore-error {
+  color: #fe2c55;
+  text-align: center;
+  font-size: 0.95rem;
+  padding: 1.5rem 0;
+}
+
+.explore-more-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 1.75rem 0;
+}
+
+.explore-more {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.6rem 2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+}
+
+.explore-more:hover:not(:disabled) {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.explore-more:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

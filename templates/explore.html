@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore — pyktok</title>
+  <link rel="stylesheet" href="https://use.typekit.net/uun7ukc.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+</head>
+<body class="explore-body">
+  <header class="explore-header">
+    <a href="/" class="explore-back" aria-label="Back to home">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+    </a>
+    <span class="explore-title">Explore</span>
+  </header>
+
+  <nav class="explore-filters" id="explore-filters" aria-label="Categories">
+    {% for cid, name in categories %}
+    <button class="explore-filter{% if cid == default_category %} active{% endif %}"
+            data-category="{{ cid }}" type="button">{{ name }}</button>
+    {% endfor %}
+  </nav>
+
+  <main class="explore-main">
+    <div id="explore-grid" class="explore-grid"></div>
+    <p id="explore-error" class="explore-error hidden" role="alert"></p>
+    <div class="explore-more-wrap">
+      <button id="load-more" class="explore-more" type="button">Load more</button>
+    </div>
+  </main>
+
+  <script>
+    window.EXPLORE_CONFIG = {
+      defaultCategory: {{ default_category | tojson }}
+    };
+  </script>
+  <script src="/static/explore.js"></script>
+</body>
+</html>

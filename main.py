@@ -2,8 +2,10 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 import shutil
+import string
 import time
 import urllib.parse
 from pathlib import Path
@@ -40,6 +42,45 @@ CLEANUP_DISK_THRESHOLD_GB: float = float(os.getenv("CLEANUP_DISK_THRESHOLD_GB", 
 # Number of recent videos to show in a mini-carousel on the homepage
 # (0 or unset = disabled). Newest first, by downloaded_at timestamp.
 HOME_CAROUSEL_COUNT: int = int(os.getenv("HOME_CAROUSEL_COUNT", "10") or "0")
+
+# --- Explore feed ----------------------------------------------------------
+# Feature flag. The explore endpoint is reverse-engineered (TikTok ships no
+# extractor for it) and can break without notice, so it ships disabled unless
+# explicitly turned on with EXPLORE_ENABLED=1.
+EXPLORE_ENABLED: bool = os.getenv("EXPLORE_ENABLED", "0").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+
+# Region passed to TikTok's explore API. Empty = let TikTok infer it from the
+# server's IP. Set e.g. EXPLORE_REGION=US to pin a region.
+EXPLORE_REGION: str = os.getenv("EXPLORE_REGION", "") or ""
+
+# Default category tab. 120 = "All" (see EXPLORE_CATEGORIES below).
+EXPLORE_CATEGORY: int = int(os.getenv("EXPLORE_CATEGORY", "120") or "120")
+
+# Items requested per explore page. TikTok's own web prefetch uses 8.
+EXPLORE_PAGE_SIZE: int = int(os.getenv("EXPLORE_PAGE_SIZE", "8") or "8")
+
+# Seconds to cache an explore response in memory (0 = no cache). Explore
+# rotates content on every call, so this only exists to absorb refresh spam.
+EXPLORE_CACHE_TTL: float = float(os.getenv("EXPLORE_CACHE_TTL", "60") or "0")
+
+# Curated subset of TikTok's explore category enum (id -> label). The full enum
+# lives in TikTok's explore-prefetch bundle; these are the stable headings.
+EXPLORE_CATEGORIES: tuple[tuple[int, str], ...] = (
+    (120, "All"),
+    (104, "Comedy"),
+    (119, "Singing & Dancing"),
+    (112, "Sports"),
+    (100, "Anime & Comics"),
+    (111, "Food & Drink"),
+    (117, "Fitness & Health"),
+    (118, "Technology"),
+    (113, "Animals"),
+    (101, "Entertainment"),
+    (106, "Family"),
+    (110, "Lipsync"),
+)
 
 # Max size of form fields in bytes (url= is the only one we accept).
 # Default 8 KiB — a real tiktok URL is well under 1 KiB.
@@ -296,10 +337,15 @@ def _extract_meta_only(url: str) -> dict:
 # ---------------------------------------------------------------------------
 
 # Hosts we are willing to follow redirects to. Covers TikTok's public surface.
+# The regional `tiktokcdn-*` entries are needed because explore cover images
+# are served from e.g. p16-common-sign.tiktokcdn-eu.com.
 _ALLOWED_HOST_SUFFIXES: tuple[str, ...] = (
     "tiktok.com",
     "tiktokv.com",
     "tiktokcdn.com",
+    "tiktokcdn-eu.com",
+    "tiktokcdn-us.com",
+    "tiktokcdn-va.com",
     "byteic.com",
     "ibyteimg.com",
     "musical.ly",
@@ -310,6 +356,166 @@ _ALLOWED_HOST_SUFFIXES: tuple[str, ...] = (
 def _is_allowed_host(host: str) -> bool:
     host = host.lower().split(":", 1)[0]
     return any(host == sfx or host.endswith("." + sfx) for sfx in _ALLOWED_HOST_SUFFIXES)
+
+
+# ---------------------------------------------------------------------------
+# Explore feed
+#
+# TikTok's /explore page renders client-side from an unsigned JSON endpoint,
+# /api/explore/item_list/. It requires a handful of "required fields" and a
+# `ttwid` cookie that is only issued after loading the explore page once. We
+# keep one long-lived AsyncClient, prime its cookie lazily, and refresh it if
+# the API starts rejecting us. No request signing (X-Bogus/msToken) is needed.
+# ---------------------------------------------------------------------------
+
+_EXPLORE_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+)
+_EXPLORE_WEBPAGE = "https://www.tiktok.com/explore"
+_EXPLORE_API = "https://www.tiktok.com/api/explore/item_list/"
+
+_explore_client: "httpx.AsyncClient | None" = None
+_explore_lock = asyncio.Lock()
+# (category, cursor) -> (cached_at, payload)
+_explore_cache: dict[tuple[int, int], tuple[float, dict]] = {}
+
+
+async def _explore_session(force: bool = False) -> httpx.AsyncClient:
+    """Return the shared explore client, priming its `ttwid` cookie if needed.
+
+    `force=True` clears cookies and re-fetches the explore page, which is what
+    we do when the API stops returning items.
+    """
+    global _explore_client
+    async with _explore_lock:
+        if _explore_client is None:
+            _explore_client = httpx.AsyncClient(
+                follow_redirects=True,
+                timeout=20,
+                headers={"User-Agent": _EXPLORE_UA},
+            )
+        if force or "ttwid" not in _explore_client.cookies:
+            _explore_client.cookies.clear()
+            try:
+                await _explore_client.get(_EXPLORE_WEBPAGE)
+            except Exception as e:
+                log.warning("explore: cookie prime failed: %s", e)
+        return _explore_client
+
+
+def _explore_params(cursor: int, category: int) -> dict:
+    """Query string TikTok's web explore prefetch sends. Order doesn't matter,
+    but every field here is load-bearing: dropping categoryType/pullType gets
+    you a 10201 "missing required fields"."""
+    return {
+        "language": "en",
+        "aid": "1988",
+        "app_language": "en",
+        "app_name": "tiktok_web",
+        "browser_language": "en-US",
+        "browser_name": "Mozilla",
+        "browser_online": "true",
+        "browser_platform": "Win32",
+        "browser_version": "5.0 (Windows)",
+        "channel": "tiktok_web",
+        "cookie_enabled": "true",
+        "device_platform": "web_pc",
+        "focus_state": "true",
+        "history_len": "2",
+        "is_fullscreen": "false",
+        "is_page_visible": "true",
+        "os": "windows",
+        "referer": "",
+        "screen_height": "1080",
+        "screen_width": "1920",
+        "tz_name": "UTC",
+        "webcast_language": "en",
+        "verifyFp": f'verify_{"".join(random.choices(string.hexdigits, k=7))}',
+        "categoryType": str(category),
+        "pullType": "1",
+        "count": str(EXPLORE_PAGE_SIZE),
+        "enable_cache": "false",
+        "isNonPersonalized": "false",
+        "is_new_user": "false",
+        "region": EXPLORE_REGION,
+        "priority_region": EXPLORE_REGION,
+        "cursor": str(cursor),
+    }
+
+
+def _normalize_explore_item(it: dict) -> dict | None:
+    video_id = it.get("id")
+    author = (it.get("author") or {}).get("uniqueId")
+    if not video_id or not author:
+        return None
+    video = it.get("video") or {}
+    stats = it.get("stats") or {}
+    cover = video.get("cover") or video.get("originCover")
+    desc = (it.get("desc") or "").strip()
+    if len(desc) > 90:
+        desc = desc[:87].rstrip() + "..."
+    return {
+        "id": video_id,
+        "url": f"/@{author}/video/{video_id}",
+        "author": author,
+        "nickname": (it.get("author") or {}).get("nickname") or author,
+        "desc": desc,
+        "duration": video.get("duration") or 0,
+        "thumb": f'/api/explore/thumb?url={urllib.parse.quote(cover, safe="")}' if cover else None,
+        "diggs": stats.get("diggCount") or 0,
+        "plays": stats.get("playCount") or 0,
+    }
+
+
+async def _fetch_explore(cursor: int, category: int) -> dict:
+    """Fetch and normalize one batch of explore items.
+
+    TikTok's explore feed rotates a fresh random batch on every request: the
+    `cursor` it returns is always "0" and `hasMore` is always true, so there is
+    no real pagination. Callers should treat each call as "give me more" and
+    de-duplicate by id.
+    """
+    cache_key = (category, cursor)
+    if EXPLORE_CACHE_TTL > 0:
+        hit = _explore_cache.get(cache_key)
+        if hit and time.time() - hit[0] < EXPLORE_CACHE_TTL:
+            return hit[1]
+
+    data: dict | None = None
+    for attempt in (1, 2):
+        client = await _explore_session(force=attempt == 2)
+        try:
+            resp = await client.get(
+                _EXPLORE_API,
+                params=_explore_params(cursor, category),
+                headers={"Referer": _EXPLORE_WEBPAGE, "Accept": "application/json"},
+            )
+            data = resp.json()
+        except Exception as e:
+            log.warning("explore: request failed (attempt %d): %s", attempt, e)
+            data = None
+            continue
+        # statusCode 0 = ok. 100001 = no session / empty, 10201 = missing
+        # fields, 400 = bad request. All are worth one cookie refresh + retry.
+        if data.get("statusCode") == 0 and isinstance(data.get("itemList"), list):
+            break
+        log.info("explore: upstream statusCode=%s (attempt %d)", data.get("statusCode"), attempt)
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=502, detail="Explore feed is unavailable right now.")
+
+    items = [x for x in (_normalize_explore_item(it) for it in data.get("itemList") or []) if x]
+    result = {
+        "items": items,
+        "cursor": data.get("cursor") or 0,
+        "hasMore": bool(data.get("hasMore")),
+    }
+    if EXPLORE_CACHE_TTL > 0:
+        if len(_explore_cache) > 128:
+            _explore_cache.clear()
+        _explore_cache[cache_key] = (time.time(), result)
+    return result
 
 
 async def download_video_async(video_id: str, url: str):
@@ -346,7 +552,80 @@ async def home(request: Request):
     except Exception as e:
         log.warning("home: failed to load recent videos: %s", e)
         recent_videos = []
-    return templates.TemplateResponse(request, 'home.html', {'recent_videos': recent_videos})
+    return templates.TemplateResponse(request, 'home.html', {
+        'recent_videos': recent_videos,
+        'explore_enabled': EXPLORE_ENABLED,
+    })
+
+
+@app.get('/explore', response_class=HTMLResponse)
+async def explore_page(request: Request):
+    if not EXPLORE_ENABLED:
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(request, 'explore.html', {
+        'categories': EXPLORE_CATEGORIES,
+        'default_category': EXPLORE_CATEGORY,
+    })
+
+
+@app.get('/api/explore')
+async def explore_api(category: int | None = None, cursor: int = 0):
+    if not EXPLORE_ENABLED:
+        raise HTTPException(status_code=404)
+    if category is None:
+        category = EXPLORE_CATEGORY
+    try:
+        return await _fetch_explore(cursor, category)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.warning("explore: fetch failed: %s", e)
+        raise HTTPException(status_code=502, detail='Explore feed is unavailable right now.')
+
+
+@app.get('/api/explore/thumb')
+async def explore_thumb(url: str):
+    """Host-allowlisted image proxy. Explore covers are signed TikTok CDN URLs
+    that expire and may be referrer-checked, so we stream them ourselves."""
+    if not EXPLORE_ENABLED:
+        raise HTTPException(status_code=404)
+    try:
+        parsed = httpx.URL(url)
+    except Exception:
+        raise HTTPException(status_code=400, detail='Invalid image URL.')
+    if parsed.scheme not in ('http', 'https') or not parsed.host or not _is_allowed_host(parsed.host):
+        raise HTTPException(status_code=400, detail='Image host not allowed.')
+
+    try:
+        client = await _explore_session()
+        resp = await client.send(
+            client.build_request('GET', url, headers={'Referer': 'https://www.tiktok.com/'}),
+            stream=True,
+        )
+    except Exception as e:
+        log.warning("explore: thumb fetch failed: %s", e)
+        raise HTTPException(status_code=502, detail='Image fetch failed.')
+
+    # The shared client follows redirects; re-check the final host.
+    if resp.status_code != 200 or (resp.url.host and not _is_allowed_host(resp.url.host)):
+        await resp.aclose()
+        raise HTTPException(status_code=502, detail='Image fetch failed.')
+    ctype = resp.headers.get('content-type', '')
+    if not ctype.startswith('image/'):
+        await resp.aclose()
+        raise HTTPException(status_code=502, detail='Not an image.')
+
+    async def _stream():
+        try:
+            async for chunk in resp.aiter_bytes():
+                yield chunk
+        finally:
+            await resp.aclose()
+
+    return StreamingResponse(_stream(), media_type=ctype, headers={
+        'Cache-Control': 'public, max-age=3600',
+        'X-Accel-Buffering': 'no',
+    })
 
 
 async def _resolve_tiktok_url(url: str) -> RedirectResponse:
