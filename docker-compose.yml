@@ -19,7 +19,9 @@ services:
       - HOME_CAROUSEL_COUNT=10
       # Experimental explore feed (1 = enable /explore; reverse-engineered endpoint)
       - EXPLORE_ENABLED=1
-      # Region sent to the explore API (empty = infer from server IP)
+      # Region sent to the explore API: ISO 3166-1 alpha-2 code (e.g. US, GB, DE);
+      # empty = infer from server IP. Unvalidated passthrough — bogus codes just
+      # fall back to the global feed.
       - EXPLORE_REGION=
       # Default explore category tab (120 = All)
       - EXPLORE_CATEGORY=120
