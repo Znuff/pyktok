@@ -18,7 +18,7 @@ services:
       # Number of recent videos to show in homepage mini-carousel (0 = disabled)
       - HOME_CAROUSEL_COUNT=10
       # Experimental explore feed (1 = enable /explore; reverse-engineered endpoint)
-      - EXPLORE_ENABLED=0
+      - EXPLORE_ENABLED=1
       # Region sent to the explore API (empty = infer from server IP)
       - EXPLORE_REGION=
       # Default explore category tab (120 = All)

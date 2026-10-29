@@ -43,8 +43,8 @@ Do not recreate from scratch.
 | `EXPLORE_ENABLED` | `0` off | experimental `/explore` feed |
 | `EXPLORE_REGION` | `""` | region sent to explore API; empty = from server IP |
 | `EXPLORE_CATEGORY` | `120` | default category tab (`120` = All) |
-| `EXPLORE_PAGE_SIZE` | `8` | items per explore batch |
-| `EXPLORE_CACHE_TTL` | `60` | seconds to cache an explore batch, `0` disables |
+| `EXPLORE_PAGE_SIZE` | `20` | target items per explore batch (API returns a variable count) |
+| `EXPLORE_CACHE_TTL` | `0` off | seconds to cache an explore batch; non-zero repeats Load-more batches |
 
 ## Python
 
@@ -107,8 +107,11 @@ feed comes from TikTok's private, unsigned web API `GET /api/explore/item_list/`
 - It needs a `ttwid` cookie from loading `https://www.tiktok.com/explore`; the
   module-level `_explore_client` primes/refreshes it via `_explore_session`.
 - It does **not** paginate: the returned `cursor` is always `"0"`, `hasMore` is
-  always true, and every call is a fresh rotating batch. `explore.js` de-dupes
-  by video id, and the UI is "Load more", not infinite scroll.
+  always true, and every call is a fresh rotating batch. `count` is only a
+  hint (batches of 3-20 are normal, hard cap ~30), so `_fetch_explore` merges
+  up to `_EXPLORE_MAX_CALLS` (3) batches to fill `EXPLORE_PAGE_SIZE`.
+  `explore.js` de-dupes by video id, and the UI is "Load more", not infinite
+  scroll.
 - It needs `categoryType` + `pullType` plus the browser params or it returns
   `statusCode 10201` ("missing required fields"); a missing/expired `ttwid`
   gives `100001`. Both trigger one cookie refresh + retry.
@@ -148,7 +151,7 @@ find /app/.venv -maxdepth 6 -type d -name '~*dlp*' -exec rm -rf {} + 2>/dev/null
 - `GET /data/{video_id}/thumbnail.jpg` — `FileResponse`
 - `download_states: dict[str, dict]` — module global, in-memory, keyed by ID
 - `_video_dirs_by_age()` / `_recent_videos(n)` — newest-first, skip missing meta/thumb, trunc desc to 60 chars, never raises
-- `_explore_session()` / `_explore_params()` / `_fetch_explore()` — explore cookie priming/refresh + rotating-batch fetch; `EXPLORE_CATEGORIES` enum in config block
+- `_explore_session()` / `_explore_params()` / `_fetch_explore()` — explore cookie priming/refresh + rotating-batch fetch topped up to `EXPLORE_PAGE_SIZE`; `EXPLORE_CATEGORIES` enum in config block
 
 ## Implemented (templates/static)
 

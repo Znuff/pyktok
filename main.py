@@ -58,12 +58,19 @@ EXPLORE_REGION: str = os.getenv("EXPLORE_REGION", "") or ""
 # Default category tab. 120 = "All" (see EXPLORE_CATEGORIES below).
 EXPLORE_CATEGORY: int = int(os.getenv("EXPLORE_CATEGORY", "120") or "120")
 
-# Items requested per explore page. TikTok's own web prefetch uses 8.
-EXPLORE_PAGE_SIZE: int = int(os.getenv("EXPLORE_PAGE_SIZE", "8") or "8")
+# Items requested per explore page. The API treats this as a hint: it often
+# returns fewer (and caps out around 30), so we ask for a healthy batch and
+# top it up if needed.
+EXPLORE_PAGE_SIZE: int = int(os.getenv("EXPLORE_PAGE_SIZE", "20") or "20")
 
-# Seconds to cache an explore response in memory (0 = no cache). Explore
-# rotates content on every call, so this only exists to absorb refresh spam.
-EXPLORE_CACHE_TTL: float = float(os.getenv("EXPLORE_CACHE_TTL", "60") or "0")
+# Max upstream requests per /api/explore call. The feed rotates a fresh batch
+# each time, so re-asking is how we fill a page; this bounds the fan-out.
+_EXPLORE_MAX_CALLS = 3
+
+# Seconds to cache an explore response in memory (0 = off, the default).
+# Explore rotates content on every call and the cursor is always "0", so any
+# non-zero TTL makes "Load more" return the same cached batch until it lapses.
+EXPLORE_CACHE_TTL: float = float(os.getenv("EXPLORE_CACHE_TTL", "0") or "0")
 
 # Curated subset of TikTok's explore category enum (id -> label). The full enum
 # lives in TikTok's explore-prefetch bundle; these are the stable headings.
@@ -469,12 +476,13 @@ def _normalize_explore_item(it: dict) -> dict | None:
 
 
 async def _fetch_explore(cursor: int, category: int) -> dict:
-    """Fetch and normalize one batch of explore items.
+    """Fetch and normalize a full page of explore items.
 
     TikTok's explore feed rotates a fresh random batch on every request: the
-    `cursor` it returns is always "0" and `hasMore` is always true, so there is
-    no real pagination. Callers should treat each call as "give me more" and
-    de-duplicate by id.
+    `cursor` it returns is always "0", `hasMore` is always true, and `count` is
+    only a hint (batches of 3-20 are normal). So we ask repeatedly — each call
+    is a new batch — and merge unique items until the page is full or we hit
+    `_EXPLORE_MAX_CALLS`. Callers still de-duplicate by id across pages.
     """
     cache_key = (category, cursor)
     if EXPLORE_CACHE_TTL > 0:
@@ -482,9 +490,17 @@ async def _fetch_explore(cursor: int, category: int) -> dict:
         if hit and time.time() - hit[0] < EXPLORE_CACHE_TTL:
             return hit[1]
 
-    data: dict | None = None
-    for attempt in (1, 2):
-        client = await _explore_session(force=attempt == 2)
+    collected: dict[str, dict] = {}
+    status = None
+    refreshed = False
+    got_response = False
+    for attempt in range(1, _EXPLORE_MAX_CALLS + 1):
+        # A non-zero status (100001 = stale/missing ttwid, 10201 = bad params)
+        # gets one cookie refresh before we give up.
+        force = status not in (0, None) and not refreshed
+        if force:
+            refreshed = True
+        client = await _explore_session(force=force)
         try:
             resp = await client.get(
                 _EXPLORE_API,
@@ -492,24 +508,29 @@ async def _fetch_explore(cursor: int, category: int) -> dict:
                 headers={"Referer": _EXPLORE_WEBPAGE, "Accept": "application/json"},
             )
             data = resp.json()
+            got_response = True
         except Exception as e:
-            log.warning("explore: request failed (attempt %d): %s", attempt, e)
-            data = None
-            continue
-        # statusCode 0 = ok. 100001 = no session / empty, 10201 = missing
-        # fields, 400 = bad request. All are worth one cookie refresh + retry.
-        if data.get("statusCode") == 0 and isinstance(data.get("itemList"), list):
+            log.warning("explore: request failed (call %d): %s", attempt, e)
+            data = {}
+        status = data.get("statusCode")
+        for it in data.get("itemList") or []:
+            item = _normalize_explore_item(it)
+            if item and item["id"] not in collected:
+                collected[item["id"]] = item
+        if len(collected) >= EXPLORE_PAGE_SIZE:
             break
-        log.info("explore: upstream statusCode=%s (attempt %d)", data.get("statusCode"), attempt)
+        if status not in (0, None) and refreshed:
+            log.info("explore: upstream statusCode=%s after refresh; giving up", status)
+            break
 
-    if not isinstance(data, dict):
+    items = list(collected.values())[:EXPLORE_PAGE_SIZE]
+    if not items and (not got_response or status not in (0, None)):
         raise HTTPException(status_code=502, detail="Explore feed is unavailable right now.")
 
-    items = [x for x in (_normalize_explore_item(it) for it in data.get("itemList") or []) if x]
     result = {
         "items": items,
-        "cursor": data.get("cursor") or 0,
-        "hasMore": bool(data.get("hasMore")),
+        "cursor": 0,
+        "hasMore": True,
     }
     if EXPLORE_CACHE_TTL > 0:
         if len(_explore_cache) > 128:

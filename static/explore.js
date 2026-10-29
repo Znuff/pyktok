@@ -3,6 +3,7 @@
   const filters = document.getElementById('explore-filters');
   const moreBtn = document.getElementById('load-more');
   const errEl = document.getElementById('explore-error');
+  const loadingEl = document.getElementById('explore-loading');
 
   // TikTok's explore feed rotates a fresh batch on every request rather than
   // paginating, so we de-duplicate by video id as batches come in.
@@ -53,6 +54,8 @@
     if (busy) return;
     busy = true;
     moreBtn.disabled = true;
+    moreBtn.textContent = 'Loading…';
+    if (!grid.children.length) loadingEl.classList.remove('hidden');
     setError('');
 
     try {
@@ -79,6 +82,8 @@
     } finally {
       busy = false;
       moreBtn.disabled = false;
+      moreBtn.textContent = 'Load more';
+      loadingEl.classList.add('hidden');
     }
   }
 

@@ -20,13 +20,18 @@
   </header>
 
   <nav class="explore-filters" id="explore-filters" aria-label="Categories">
-    {% for cid, name in categories %}
-    <button class="explore-filter{% if cid == default_category %} active{% endif %}"
-            data-category="{{ cid }}" type="button">{{ name }}</button>
-    {% endfor %}
+    <div class="explore-filters-inner">
+      {% for cid, name in categories %}
+      <button class="explore-filter{% if cid == default_category %} active{% endif %}"
+              data-category="{{ cid }}" type="button">{{ name }}</button>
+      {% endfor %}
+    </div>
   </nav>
 
   <main class="explore-main">
+    <div id="explore-loading" class="explore-loading hidden" aria-hidden="true">
+      <span class="spinner"></span>
+    </div>
     <div id="explore-grid" class="explore-grid"></div>
     <p id="explore-error" class="explore-error hidden" role="alert"></p>
     <div class="explore-more-wrap">

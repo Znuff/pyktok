@@ -58,8 +58,8 @@ requests to the app. Copy it, edit the server name and the TLS paths,
 | `EXPLORE_ENABLED`          | `0`     | Turn on the experimental `/explore` feed. Off by default.                    |
 | `EXPLORE_REGION`           | `""`    | Region sent to the explore API. Empty = infer from server IP.                |
 | `EXPLORE_CATEGORY`         | `120`   | Default category tab (`120` = All).                                          |
-| `EXPLORE_PAGE_SIZE`        | `8`     | Items per explore batch.                                                     |
-| `EXPLORE_CACHE_TTL`        | `60`    | Seconds to cache an explore batch. `0` disables caching.                     |
+| `EXPLORE_PAGE_SIZE`        | `20`    | Target items per explore batch (the API may return fewer, so it tops up).    |
+| `EXPLORE_CACHE_TTL`        | `0`     | Seconds to cache an explore batch. Off by default (breaks Load more).        |
 
 ## Why yt-dlp
 

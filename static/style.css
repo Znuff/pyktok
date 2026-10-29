@@ -614,10 +614,8 @@ html, body {
   position: sticky;
   top: 52px;
   z-index: 40;
-  display: flex;
-  gap: 0.5rem;
   overflow-x: auto;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 0;
   background: rgba(12, 12, 21, 0.88);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -626,6 +624,16 @@ html, body {
 
 .explore-filters::-webkit-scrollbar {
   display: none;
+}
+
+/* Align the pills with the card grid (same max-width + inline padding). */
+.explore-filters-inner {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .explore-filter {
@@ -689,6 +697,25 @@ html, body {
   object-fit: cover;
   display: block;
   background: #000;
+}
+
+.explore-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3.5rem 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #fe2c55;
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
 }
 
 .explore-card-meta {
