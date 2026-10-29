@@ -566,6 +566,20 @@ async def download_video_async(video_id: str, url: str):
 # Routes
 # ---------------------------------------------------------------------------
 
+def _public_base_url(request: Request) -> str:
+    """Absolute origin for og:/twitter: URLs, honoring a reverse proxy.
+
+    Uvicorn isn't started with --proxy-headers here, so parse the forwarded
+    headers ourselves. og media URLs must be absolute and HTTPS for the
+    embeds to render.
+    """
+    proto = request.headers.get('x-forwarded-proto', request.url.scheme)
+    proto = proto.split(',')[0].strip() or request.url.scheme
+    host = request.headers.get('x-forwarded-host') or request.headers.get('host') or request.url.netloc
+    host = host.split(',')[0].strip()
+    return f'{proto}://{host}'
+
+
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
     try:
@@ -576,6 +590,7 @@ async def home(request: Request):
     return templates.TemplateResponse(request, 'home.html', {
         'recent_videos': recent_videos,
         'explore_enabled': EXPLORE_ENABLED,
+        'base_url': _public_base_url(request),
     })
 
 
@@ -788,6 +803,9 @@ async def serve_thumbnail(video_id: str):
 
 @app.get('/{path:path}')
 async def catch_all(path: str, request: Request):
+    base_url = _public_base_url(request)
+    canonical_url = f'{base_url}{request.url.path}'
+
     # Reject photo posts up front — yt-dlp will fail anyway, and we want a
     # clear error message instead of a generic download failure.
     if re.match(r'^@[^/]+/photo/\d+$', path):
@@ -797,6 +815,8 @@ async def catch_all(path: str, request: Request):
             'username': path.split('/')[0].lstrip('@'),
             'tiktok_url': f'https://www.tiktok.com/{path}',
             'error_message': "pyktok doesn't support TikTok photo posts — only videos.",
+            'base_url': base_url,
+            'canonical_url': canonical_url,
         })
 
     # Live streams aren't downloadable — show a clear message rather than a 404.
@@ -808,6 +828,8 @@ async def catch_all(path: str, request: Request):
             'username': live_match.group(1),
             'tiktok_url': f'https://www.tiktok.com/{path}',
             'error_message': "pyktok doesn't support TikTok Live streams yet.",
+            'base_url': base_url,
+            'canonical_url': canonical_url,
         })
 
     match = re.match(r'^@([^/]+)/video/(\d+)$', path)
@@ -832,6 +854,8 @@ async def catch_all(path: str, request: Request):
             'duration': meta.get('duration', 0),
             'width': meta.get('width', 0),
             'height': meta.get('height', 0),
+            'base_url': base_url,
+            'canonical_url': canonical_url,
         })
 
     # Not cached — kick off download and show loading page.
@@ -850,4 +874,6 @@ async def catch_all(path: str, request: Request):
         'username': username,
         'tiktok_url': tiktok_url,
         'ready': False,
+        'base_url': base_url,
+        'canonical_url': canonical_url,
     })

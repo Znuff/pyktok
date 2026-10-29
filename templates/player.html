@@ -4,6 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if ready %}@{{ author }}{% else %}Loading...{% endif %} — pyktok</title>
+  <meta name="theme-color" content="#000000">
+  {% if ready %}
+  <!-- OpenGraph: embeds (Discord, Slack, iMessage, Telegram, Facebook, …) -->
+  <meta property="og:site_name" content="pyktok">
+  <meta property="og:type" content="video.other">
+  <meta property="og:title" content="@{{ author }} on TikTok">
+  <meta property="og:description" content="{{ description or ('Video by @' ~ author ~ ' on TikTok') }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:image" content="{{ base_url }}{{ thumbnail_url }}">
+  <meta property="og:image:alt" content="{{ description or ('Video by @' ~ author) }}">
+  <meta property="og:video" content="{{ base_url }}{{ video_url }}">
+  <meta property="og:video:url" content="{{ base_url }}{{ video_url }}">
+  <meta property="og:video:secure_url" content="{{ base_url }}{{ video_url }}">
+  <meta property="og:video:type" content="video/mp4">
+  {% if width and height %}
+  <meta property="og:video:width" content="{{ width }}">
+  <meta property="og:video:height" content="{{ height }}">
+  {% endif %}
+  <!-- Twitter/X card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="@{{ author }} on TikTok">
+  <meta name="twitter:description" content="{{ description or ('Video by @' ~ author ~ ' on TikTok') }}">
+  <meta name="twitter:image" content="{{ base_url }}{{ thumbnail_url }}">
+  {% else %}
+  <meta property="og:site_name" content="pyktok">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="pyktok — TikTok videos without the app">
+  <meta property="og:description" content="Paste a TikTok link to watch it here.">
+  <meta property="og:url" content="{{ canonical_url }}">
+  {% endif %}
   <link rel="stylesheet" href="https://use.typekit.net/uun7ukc.css">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">

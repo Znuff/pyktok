@@ -157,7 +157,7 @@ find /app/.venv -maxdepth 6 -type d -name '~*dlp*' -exec rm -rf {} + 2>/dev/null
 
 **home.html** — black bg, custom display font, input + Go. Direct-match `tiktok.com/@user/video/id` → navigate; else POST `/resolve`. Carousel: `flex-direction:column` body, mobile horizontal scroll with `scroll-snap-type:x mandatory`, ≥640px `grid auto-fill,minmax(140px,1fr)`. 140px cards, 9:16 thumb, `@author` + 1-line desc, click → `/@user/video/id`.
 
-**player.html** — loading: SSE progress bar, "Processing your video, please be patient", error state. Player: `<video>` w/ width+height from meta, no autoplay/muted. Play btn overlay (`#play-btn`) shown if autoplay blocked.
+**player.html** — loading: SSE progress bar, "Processing your video, please be patient", error state. Player: `<video>` w/ width+height from meta, no autoplay/muted. Play btn overlay (`#play-btn`) shown if autoplay blocked. Ready state emits OpenGraph/Twitter meta (`og:video` mp4 + `og:image` + dimensions) for Discord/Slack/etc. unfurls; absolute URLs come from `_public_base_url` (honors `X-Forwarded-Proto`/`Host`, since uvicorn lacks `--proxy-headers`).
 ```
 .overlay
   .overlay-top
